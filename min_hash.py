@@ -1,5 +1,6 @@
 import regex
 from datasketch import MinHash, MinHashLSH
+from tqdm.auto import tqdm
 
 
 def preprocess_text(text: str) -> str:
@@ -40,6 +41,7 @@ def find_similar_texts(
     threshold: float = 0.5,
     num_perm: int = 128,
     k: int = 3,
+    return_only_idx: bool = False,
 ):
     # Initialize LSH index
     lsh = MinHashLSH(threshold=threshold, num_perm=num_perm)
@@ -47,16 +49,20 @@ def find_similar_texts(
     # Store MinHash objects
     minhashes = {}
 
-    # Add documents to LSH index
-    for idx, text in enumerate(data):
+    # Add documents to LSH index TODO: multiprocess
+    for idx, text in enumerate(tqdm(data, desc="Hashing")):
         minhash = create_minhash(text, num_perm=num_perm, k=k)
         minhashes[idx] = minhash
         lsh.insert(f"doc_{idx}", minhash)
 
     # Find similars pairs using LSH
     similar_pairs = []
+    texts_to_remove = set()
 
-    for idx, text in enumerate(data):
+    for idx, text in enumerate(tqdm(data, desc="Searching similarities")):
+        if idx in texts_to_remove:
+            continue
+
         query_minhash = minhashes[idx]
         similar_docs = lsh.query(query_minhash)
 
@@ -69,6 +75,9 @@ def find_similar_texts(
                 similarity = minhashes[idx].jaccard(minhashes[similar_idx])
 
                 if similarity > threshold:
+                    if return_only_idx:
+                        texts_to_remove.add(similar_idx)
+                        continue
                     similar_pairs.append(
                         {
                             "text1_index": idx,
@@ -78,5 +87,8 @@ def find_similar_texts(
                             "similarity": similarity,
                         },
                     )
+
+    if return_only_idx:
+        return texts_to_remove
 
     return similar_pairs
