@@ -4,6 +4,11 @@ Here are the different steps (from Llama 3.1 paper https://arxiv.org/pdf/2407.21
 
 The project is managed with `uv`.
 
+## Entropy
+
+This is not in the original paper but I wanted to implement it, plus it's a good first filtering to remove anything that is not language.
+For that we can use the shannon entropy.
+
 ## De-duplication
 
 If we scrap from web, we can start the deduplication by removing similar urls. We are not interested in this here.
