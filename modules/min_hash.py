@@ -1,3 +1,6 @@
+from functools import partial
+from multiprocessing import Pool, cpu_count
+
 import regex
 from datasketch import MinHash, MinHashLSH
 from tqdm.auto import tqdm
@@ -42,6 +45,7 @@ def find_similar_texts(
     num_perm: int = 128,
     k: int = 3,
     return_only_idx: bool = False,
+    num_workers: int = cpu_count() - 1,
 ):
     # Initialize LSH index
     lsh = MinHashLSH(threshold=threshold, num_perm=num_perm)
@@ -50,10 +54,14 @@ def find_similar_texts(
     minhashes = {}
 
     # Add documents to LSH index TODO: multiprocess
-    for idx, text in enumerate(tqdm(data, desc="Hashing")):
-        minhash = create_minhash(text, num_perm=num_perm, k=k)
-        minhashes[idx] = minhash
-        lsh.insert(f"doc_{idx}", minhash)
+    with Pool(processes=num_workers) as pool:
+        minhash = pool.imap_unordered(
+            partial(create_minhash, num_perm=num_perm, k=k),
+            tqdm(data, desc="Hashing"),
+        )
+        for idx, hash_value in enumerate(minhash):
+            minhashes[idx] = hash_value
+            lsh.insert(f"doc_{idx}", hash_value)
 
     # Find similars pairs using LSH
     similar_pairs = []

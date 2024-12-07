@@ -1,3 +1,5 @@
+import os
+
 from datasets import load_dataset
 
 from modules.entropy import filter_by_entropy
@@ -13,11 +15,14 @@ if __name__ == "__main__":
 
     # --- Entropy --- #
 
-    filtered_texts = filter_by_entropy(ds["train"][0:1000]["text"])
+    filtered_texts = filter_by_entropy(
+        ds["train"][0:10000]["text"],
+        num_workers=os.cpu_count() - 1,
+    )
 
     # --- MinHashing --- #
     similar_docs = find_similar_texts(
-        ds["train"][0:1000]["text"],
+        filtered_texts,
         threshold=0.9,
         return_only_idx=True,
     )
